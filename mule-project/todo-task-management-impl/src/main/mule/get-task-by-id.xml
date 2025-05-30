@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns="http://www.mulesoft.org/schema/mule/core"
+      xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+      xmlns:db="http://www.mulesoft.org/schema/mule/db"
+      xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+                          http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+                          http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+
+    <sub-flow name="get-task-by-id-flow" doc:id="062c0eb3-3db6-4959-bc97-35ddbf51ae3f">
+        <logger level="INFO" doc:name="Start - Get Task By ID" message="Starting get task by ID flow with ID: #[vars.taskId]"/>
+        
+        <!-- Query task by ID -->
+        <db:select doc:name="Select Task by ID" config-ref="mysql-db-config">
+            <db:sql><![CDATA[SELECT id, title, description, dueDate, completed FROM tasks WHERE id = :id]]></db:sql>
+            <db:input-parameters><![CDATA[#[{
+    'id': vars.taskId
+}]]]></db:input-parameters>
+        </db:select>
+        
+        <!-- Check if task exists -->
+        <choice doc:name="Check if task exists">
+            <when expression="#[isEmpty(payload)]">
+                <ee:transform doc:name="Task Not Found">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+    "message": "Task not found"
+}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus"><![CDATA[404]]></ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+                <logger level="INFO" doc:name="Task Not Found" message="Task with ID #[vars.taskId] not found"/>
+            </when>
+            <otherwise>
+                <!-- Transform database result to API response format -->
+                <ee:transform doc:name="Transform to API Response">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+    id: payload[0].id as String,
+    title: payload[0].title,
+    description: payload[0].description,
+    dueDate: payload[0].dueDate,
+    completed: payload[0].completed
+}]]></ee:set-payload>
+                    </ee:message>
+                </ee:transform>
+                <logger level="INFO" doc:name="End - Get Task By ID" message="Completed get task by ID flow, found task with ID: #[payload.id]"/>
+            </otherwise>
+        </choice>
+    </sub-flow>
+    
+</mule>

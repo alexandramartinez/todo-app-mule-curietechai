@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns="http://www.mulesoft.org/schema/mule/core"
+      xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+      xmlns:db="http://www.mulesoft.org/schema/mule/db"
+      xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+                          http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+                          http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+
+    <sub-flow name="create-task-flow" doc:id="e1b15d7b-214f-45eb-a033-b6e7671368ca">
+        <logger level="INFO" doc:name="Start - Create Task" message="Starting create task flow with payload: #[payload]"/>
+        
+        <!-- Validate required fields -->
+        <ee:transform doc:name="Validate Required Fields">
+            <ee:message />
+            <ee:variables>
+                <ee:set-variable variableName="taskInput"><![CDATA[%dw 2.0
+output application/java
+---
+{
+    title: payload.title,
+    description: payload.description default null,
+    dueDate: payload.dueDate default null,
+    completed: payload.completed default false
+}]]></ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+        
+        <!-- Insert task into database -->
+        <db:insert doc:name="Insert Task" config-ref="mysql-db-config">
+            <db:sql><![CDATA[INSERT INTO tasks (title, description, dueDate, completed) 
+VALUES (:title, :description, :dueDate, :completed)]]></db:sql>
+            <db:input-parameters><![CDATA[#[{
+    'title': vars.taskInput.title,
+    'description': vars.taskInput.description,
+    'dueDate': vars.taskInput.dueDate,
+    'completed': vars.taskInput.completed
+}]]]></db:input-parameters>
+        </db:insert>
+        
+        <!-- Get the generated ID -->
+        <db:select doc:name="Get Generated ID" config-ref="mysql-db-config">
+            <db:sql><![CDATA[SELECT LAST_INSERT_ID() as id]]></db:sql>
+        </db:select>
+        
+        <!-- Transform to API response format -->
+        <ee:transform doc:name="Transform to API Response">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+    id: payload[0].id as String,
+    title: vars.taskInput.title,
+    description: vars.taskInput.description,
+    dueDate: vars.taskInput.dueDate,
+    completed: vars.taskInput.completed
+}]]></ee:set-payload>
+            </ee:message>
+            <ee:variables>
+                <ee:set-variable variableName="httpStatus"><![CDATA[201]]></ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+        
+        <logger level="INFO" doc:name="End - Create Task" message="Completed create task flow, created task with ID: #[payload.id]"/>
+    </sub-flow>
+    
+</mule>

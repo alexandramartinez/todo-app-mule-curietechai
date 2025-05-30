@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns="http://www.mulesoft.org/schema/mule/core"
+      xmlns:db="http://www.mulesoft.org/schema/mule/db"
+      xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit"
+      xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+                          http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+	http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+	http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd">
+
+    <http:listener-config name="to-do-task-management-api-httpListenerConfig">
+        <http:listener-connection host="${http.host}" port="${http.port}" />
+    </http:listener-config>
+    <apikit:config name="to-do-task-management-api-config" api="resource::${api.orgId}:${api.name}:${api.version}:oas:zip:${api.name}.yaml" outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
+    <!-- Environment global property -->
+    <global-property name="env" value="local" doc:name="Environment"/>
+    
+    <!-- Configuration properties -->
+    <configuration-properties doc:name="Configuration properties" file="${env}-properties.yaml"/>
+    
+    <!-- MySQL Database Configuration -->
+    <db:config name="mysql-db-config" doc:name="Database Config">
+        <db:my-sql-connection host="${mysql.host}" 
+                             port="${mysql.port}" 
+                             user="${mysql.user}" 
+                             password="${mysql.password}" 
+                             database="${mysql.database}"/>
+    </db:config>
+    
+</mule>

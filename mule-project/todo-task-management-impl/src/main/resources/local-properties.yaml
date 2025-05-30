@@ -1,0 +1,16 @@
+http:
+  host: "0.0.0.0"
+  port: "8081"
+
+api:
+  orgId: c567f842-dda9-4c9d-880b-3e1481ab3b34
+  name: to-do-task-management-api
+  version: "1.0.0"
+
+# MySQL Database Configuration
+mysql:
+  host: "127.0.0.1"
+  port: "3306"
+  database: "mysqldb"
+  user: "user"
+  password: "password"

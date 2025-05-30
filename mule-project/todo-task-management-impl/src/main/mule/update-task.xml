@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns="http://www.mulesoft.org/schema/mule/core"
+      xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+      xmlns:db="http://www.mulesoft.org/schema/mule/db"
+      xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+                          http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+                          http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+
+    <sub-flow name="update-task-flow" doc:id="7b69c3b2-eb02-4ae7-8265-320b6462db78">
+        <logger level="INFO" doc:name="Start - Update Task" message="Starting update task flow with ID: #[vars.taskId] and payload: #[payload]"/>
+        
+        <!-- Check if task exists -->
+        <db:select doc:name="Check Task Exists" config-ref="mysql-db-config">
+            <db:sql><![CDATA[SELECT id FROM tasks WHERE id = :id]]></db:sql>
+            <db:input-parameters><![CDATA[#[{
+    'id': vars.taskId
+}]]]></db:input-parameters>
+        </db:select>
+        
+        <choice doc:name="Check if task exists">
+            <when expression="#[isEmpty(payload)]">
+                <ee:transform doc:name="Task Not Found">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+    "message": "Task not found"
+}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus"><![CDATA[404]]></ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+                <logger level="INFO" doc:name="Task Not Found" message="Task with ID #[vars.taskId] not found for update"/>
+            </when>
+            <otherwise>
+                <!-- Prepare task data for update -->
+                <ee:transform doc:name="Prepare Task Data">
+                    <ee:message />
+                    <ee:variables>
+                        <ee:set-variable variableName="taskInput"><![CDATA[%dw 2.0
+output application/java
+---
+{
+    title: payload.title,
+    description: payload.description default null,
+    dueDate: payload.dueDate default null,
+    completed: payload.completed default false
+}]]></ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+                
+                <!-- Update task in database -->
+                <db:update doc:name="Update Task" config-ref="mysql-db-config">
+                    <db:sql><![CDATA[UPDATE tasks 
+SET title = :title, description = :description, dueDate = :dueDate, completed = :completed 
+WHERE id = :id]]></db:sql>
+                    <db:input-parameters><![CDATA[#[{
+    'id': vars.taskId,
+    'title': vars.taskInput.title,
+    'description': vars.taskInput.description,
+    'dueDate': vars.taskInput.dueDate,
+    'completed': vars.taskInput.completed
+}]]]></db:input-parameters>
+                </db:update>
+                
+                <!-- Get updated task -->
+                <db:select doc:name="Get Updated Task" config-ref="mysql-db-config">
+                    <db:sql><![CDATA[SELECT id, title, description, dueDate, completed FROM tasks WHERE id = :id]]></db:sql>
+                    <db:input-parameters><![CDATA[#[{
+    'id': vars.taskId
+}]]]></db:input-parameters>
+                </db:select>
+                
+                <!-- Transform to API response format -->
+                <ee:transform doc:name="Transform to API Response">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+    id: payload[0].id as String,
+    title: payload[0].title,
+    description: payload[0].description,
+    dueDate: payload[0].dueDate,
+    completed: payload[0].completed
+}]]></ee:set-payload>
+                    </ee:message>
+                </ee:transform>
+                
+                <logger level="INFO" doc:name="End - Update Task" message="Completed update task flow, updated task with ID: #[payload.id]"/>
+            </otherwise>
+        </choice>
+    </sub-flow>
+    
+</mule>
