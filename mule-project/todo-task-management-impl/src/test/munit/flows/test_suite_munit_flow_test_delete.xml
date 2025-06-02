@@ -1,0 +1,116 @@
+<?xml version="1.0" ?>
+<mule xmlns:os="http://www.mulesoft.org/schema/mule/os" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:validation="http://www.mulesoft.org/schema/mule/validation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:munit="http://www.mulesoft.org/schema/mule/munit" xmlns:munit-tools="http://www.mulesoft.org/schema/mule/munit-tools" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xsi:schemaLocation="     http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd     http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd     http://www.mulesoft.org/schema/mule/munit http://www.mulesoft.org/schema/mule/munit/current/mule-munit.xsd     http://www.mulesoft.org/schema/mule/munit-tools  http://www.mulesoft.org/schema/mule/munit-tools/current/mule-munit-tools.xsd http://www.mulesoft.org/schema/mule/validation http://www.mulesoft.org/schema/mule/validation/current/mule-validation.xsd http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd">
+  <munit:config name="test_suite_munit_flow_test_delete.xml"/>
+  <munit:test name="test_suite_munit_flow_test_delete-happyPath" description="Successfully delete an existing task by taskId (happy path). This covers the case where the task exists in the database and is deleted.">
+    <munit:behavior>
+      <!-- Mock database select to return existing task -->
+      <munit-tools:mock-when doc:name="Mock when Check Task Exists" processor="db:select">
+        <munit-tools:with-attributes>
+          <munit-tools:with-attribute whereValue="Check Task Exists" attributeName="doc:name"/>
+        </munit-tools:with-attributes>
+        <munit-tools:then-return>
+          <munit-tools:payload value="#[MunitTools::getResourceAsString('test_suite_munit_flow_test_delete/mock_data_scenario_0/select_task_response.json')]" mediaType="application/json" encoding="UTF-8"/>
+        </munit-tools:then-return>
+      </munit-tools:mock-when>
+      <!-- Mock database delete to simulate successful deletion -->
+      <munit-tools:mock-when doc:name="Mock when Delete Task" processor="db:delete">
+        <munit-tools:with-attributes>
+          <munit-tools:with-attribute whereValue="Delete Task" attributeName="doc:name"/>
+        </munit-tools:with-attributes>
+        <munit-tools:then-return>
+          <munit-tools:payload value="#[MunitTools::getResourceAsString('test_suite_munit_flow_test_delete/mock_data_scenario_0/delete_task_response.json')]" mediaType="application/json" encoding="UTF-8"/>
+        </munit-tools:then-return>
+      </munit-tools:mock-when>
+    </munit:behavior>
+    <munit:execution>
+      <!-- Set event with taskId in uriParams -->
+      <munit:set-event doc:name="Set Event">
+        <munit:attributes value="#[{                 'uriParams': {                     'taskId': '12345'                 }             }]" mediaType="application/java"/>
+      </munit:set-event>
+      <flow-ref name="delete:\tasks\(taskId):to-do-task-management-api-config"/>
+    </munit:execution>
+    <munit:validation>
+      <!-- Verify that main flow logger was called -->
+      <munit-tools:verify-call doc:name="Verify main flow logger" processor="logger" times="1">
+        <munit-tools:with-attributes>
+          <munit-tools:with-attribute whereValue="delete:\tasks\(taskId):to-do-task-management-api-config" attributeName="message"/>
+        </munit-tools:with-attributes>
+      </munit-tools:verify-call>
+      <!-- Verify that subflow loggers were called -->
+      <munit-tools:verify-call doc:name="Verify Start - Delete Task logger" processor="logger" times="1">
+        <munit-tools:with-attributes>
+          <munit-tools:with-attribute whereValue="Start - Delete Task" attributeName="doc:name"/>
+        </munit-tools:with-attributes>
+      </munit-tools:verify-call>
+      <munit-tools:verify-call doc:name="Verify End - Delete Task logger" processor="logger" times="1">
+        <munit-tools:with-attributes>
+          <munit-tools:with-attribute whereValue="End - Delete Task" attributeName="doc:name"/>
+        </munit-tools:with-attributes>
+      </munit-tools:verify-call>
+      <!-- Verify database connectors were called -->
+      <munit-tools:verify-call doc:name="Verify Check Task Exists called" processor="db:select" times="1">
+        <munit-tools:with-attributes>
+          <munit-tools:with-attribute whereValue="Check Task Exists" attributeName="doc:name"/>
+        </munit-tools:with-attributes>
+      </munit-tools:verify-call>
+      <munit-tools:verify-call doc:name="Verify Delete Task called" processor="db:delete" times="1">
+        <munit-tools:with-attributes>
+          <munit-tools:with-attribute whereValue="Delete Task" attributeName="doc:name"/>
+        </munit-tools:with-attributes>
+      </munit-tools:verify-call>
+      <!-- Assert final payload is null and httpStatus is 204 -->
+      <munit-tools:assert-that doc:name="Assert payload is null" expression="#[payload]" is="#[MunitTools::nullValue()]"/>
+      <munit-tools:assert-that doc:name="Assert httpStatus is 204" expression="#[vars.httpStatus]" is="#[MunitTools::equalTo(204)]"/>
+    </munit:validation>
+  </munit:test>
+  <munit:test name="test_suite_munit_flow_test_delete-taskNotFound" description="Attempt to delete a task that does not exist (task not found path). This covers the case where the task does not exist in the database.">
+    <munit:behavior>
+      <!-- Mock the database select to return empty result indicating task not found -->
+      <munit-tools:mock-when doc:name="Mock Check Task Exists" processor="db:select">
+        <munit-tools:with-attributes>
+          <munit-tools:with-attribute whereValue="Check Task Exists" attributeName="doc:name"/>
+        </munit-tools:with-attributes>
+        <munit-tools:then-return>
+          <munit-tools:payload value="#[MunitTools::getResourceAsString('test_suite_munit_flow_test_delete/mock_data_scenario_1/db_select_empty_response.json')]" mediaType="application/json" encoding="UTF-8"/>
+        </munit-tools:then-return>
+      </munit-tools:mock-when>
+    </munit:behavior>
+    <munit:execution>
+      <!-- Set event with taskId in uriParams -->
+      <munit:set-event doc:name="Set Event">
+        <munit:attributes value="#[{                     'uriParams': {                         'taskId': '123'                     }                 }]" mediaType="application/java"/>
+      </munit:set-event>
+      <flow-ref name="delete:\tasks\(taskId):to-do-task-management-api-config"/>
+    </munit:execution>
+    <munit:validation>
+      <!-- Verify the main flow logger was called -->
+      <munit-tools:verify-call doc:name="Verify main flow logger" processor="logger">
+        <munit-tools:with-attributes>
+          <munit-tools:with-attribute whereValue="delete:\tasks\(taskId):to-do-task-management-api-config" attributeName="message"/>
+        </munit-tools:with-attributes>
+      </munit-tools:verify-call>
+      <!-- Verify the Task Not Found logger was called -->
+      <munit-tools:verify-call doc:name="Verify Task Not Found logger" processor="logger">
+        <munit-tools:with-attributes>
+          <munit-tools:with-attribute whereValue="Task Not Found" attributeName="doc:name"/>
+        </munit-tools:with-attributes>
+      </munit-tools:verify-call>
+      <!-- Verify database select was called -->
+      <munit-tools:verify-call doc:name="Verify database select called" processor="db:select">
+        <munit-tools:with-attributes>
+          <munit-tools:with-attribute whereValue="Check Task Exists" attributeName="doc:name"/>
+        </munit-tools:with-attributes>
+      </munit-tools:verify-call>
+      <!-- Verify database delete was not called -->
+      <munit-tools:verify-call doc:name="Verify database delete not called" processor="db:delete" times="0">
+        <munit-tools:with-attributes>
+          <munit-tools:with-attribute whereValue="Delete Task" attributeName="doc:name"/>
+        </munit-tools:with-attributes>
+      </munit-tools:verify-call>
+      <!-- Assert the error message -->
+      <munit-tools:assert-that doc:name="Assert error message" expression="#[payload.message]" is="#[MunitTools::equalTo('Task not found')]"/>
+      <!-- Assert the HTTP status -->
+      <munit-tools:assert-that doc:name="Assert HTTP status" expression="#[vars.httpStatus]" is="#[MunitTools::equalTo(404)]"/>
+    </munit:validation>
+  </munit:test>
+</mule>

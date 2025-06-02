@@ -1,0 +1,107 @@
+<?xml version="1.0" ?>
+<mule xmlns:os="http://www.mulesoft.org/schema/mule/os" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:validation="http://www.mulesoft.org/schema/mule/validation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:munit="http://www.mulesoft.org/schema/mule/munit" xmlns:munit-tools="http://www.mulesoft.org/schema/mule/munit-tools" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xsi:schemaLocation="     http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd     http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd     http://www.mulesoft.org/schema/mule/munit http://www.mulesoft.org/schema/mule/munit/current/mule-munit.xsd     http://www.mulesoft.org/schema/mule/munit-tools  http://www.mulesoft.org/schema/mule/munit-tools/current/mule-munit-tools.xsd http://www.mulesoft.org/schema/mule/validation http://www.mulesoft.org/schema/mule/validation/current/mule-validation.xsd http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd">
+  <munit:config name="test_suite_munit_flow_test_getbyid.xml"/>
+  <munit:test name="test_suite_munit_flow_test_getbyid-happyPath" description="Successfully retrieve a task by ID when the task exists in the database (happy path).">
+    <!-- Behavior: This section sets up the initial conditions for the test.
+         1. Set Event: Simulates an incoming HTTP GET request with 'taskId' in the URI parameters.
+                      This triggers the main flow and provides the necessary input.
+         2. Mock When (db:select): Mocks the database 'select' operation.
+                                   It's configured to return a predefined successful response (a task object)
+                                   when the 'Select Task by ID' component is called. This ensures that
+                                   the database interaction is controlled and predictable for the test,
+                                   simulating the scenario where a task is found.
+    -->
+    <munit:behavior>
+      <munit:set-event doc:name="Set HTTP GET Request with taskId">
+        <munit:attributes value="#[{uriParams: {'taskId': '101'}, method: 'GET', requestPath: '/tasks/101'}]"/>
+      </munit:set-event>
+      <munit-tools:mock-when doc:name="Mock DB Select Task by ID" processor="db:select">
+        <munit-tools:with-attributes>
+          <munit-tools:with-attribute whereValue="Select Task by ID" attributeName="doc:name"/>
+        </munit-tools:with-attributes>
+        <munit-tools:then-return>
+          <munit-tools:payload value="#[MunitTools::getResourceAsString('test_suite_munit_flow_test_getbyid/mock_data_scenario_0/select_task_by_id_response.json')]" mediaType="application/json" encoding="UTF-8"/>
+        </munit-tools:then-return>
+      </munit-tools:mock-when>
+    </munit:behavior>
+    <!-- Execution: This section executes the Mule flow that is being tested.
+         1. Flow Ref: Calls the 'get:\tasks\(taskId):to-do-task-management-api-config' flow,
+                      which is the main flow under test.
+    -->
+    <munit:execution>
+      <flow-ref name="get:\tasks\(taskId):to-do-task-management-api-config"/>
+    </munit:execution>
+    <!-- Validation: This section verifies that the flow behaved as expected.
+         1. Assert That (payload): Checks if the final payload of the flow matches the expected JSON structure
+                                   for a successfully retrieved task. The expected response is loaded from a file.
+         2. Verify Call (Loggers): Confirms that specific logger components within the main flow and the
+                                   'get-task-by-id-flow' sub-flow were invoked as expected during the execution.
+                                   This ensures that logging is happening at critical points.
+         3. Verify Call (db:select): Ensures that the 'Select Task by ID' database operation was called exactly once.
+                                     This confirms that the flow attempted to retrieve data from the database.
+    -->
+    <munit:validation>
+      <munit-tools:assert-that doc:name="Assert final payload is the expected task" expression="#[payload]" is="#[MunitTools::equalTo(read(MunitTools::getResourceAsString('test_suite_munit_flow_test_getbyid/mock_data_scenario_0/expected_api_response.json'), 'application/json'))]" message="The output payload does not match the expected task details."/>
+      <munit-tools:verify-call doc:name="Verify Main Flow Logger Invoked" processor="logger" times="1">
+        <munit-tools:with-attributes>
+          <munit-tools:with-attribute whereValue="get:\tasks\(taskId):to-do-task-management-api-config" attributeName="message"/>
+        </munit-tools:with-attributes>
+      </munit-tools:verify-call>
+      <munit-tools:verify-call doc:name="Verify Subflow Start Logger Invoked" processor="logger" times="1">
+        <munit-tools:with-attributes>
+          <munit-tools:with-attribute whereValue="Start - Get Task By ID" attributeName="doc:name"/>
+        </munit-tools:with-attributes>
+      </munit-tools:verify-call>
+      <munit-tools:verify-call doc:name="Verify Subflow End Logger Invoked" processor="logger" times="1">
+        <munit-tools:with-attributes>
+          <munit-tools:with-attribute whereValue="End - Get Task By ID" attributeName="doc:name"/>
+        </munit-tools:with-attributes>
+      </munit-tools:verify-call>
+      <munit-tools:verify-call doc:name="Verify DB Select Task by ID Invoked" processor="db:select" times="1">
+        <munit-tools:with-attributes>
+          <munit-tools:with-attribute whereValue="Select Task by ID" attributeName="doc:name"/>
+        </munit-tools:with-attributes>
+      </munit-tools:verify-call>
+    </munit:validation>
+  </munit:test>
+  <munit:test name="test_suite_munit_flow_test_getbyid-taskNotFound" description="Attempt to retrieve a task by ID when the task does not exist in the database (task not found).">
+    <!-- 
+        Behavior Section:
+        - Set the event to simulate an HTTP request with a valid taskId in uriParams.
+        - Set attributes as application/java to match expected type.
+        - Mock the db:select connector to return an empty list (task not found).
+    -->
+    <munit:behavior>
+      <munit:set-event doc:name="Set Event">
+        <munit:payload value="#[null]" mediaType="application/json" encoding="UTF-8"/>
+        <munit:attributes value="#[{ uriParams: { taskId: '123' } }]" mediaType="application/java" encoding="UTF-8"/>
+      </munit:set-event>
+      <munit-tools:mock-when doc:name="Mock DB Select - Task Not Found" processor="db:select">
+        <munit-tools:with-attributes>
+          <munit-tools:with-attribute whereValue="Select Task by ID" attributeName="doc:name"/>
+        </munit-tools:with-attributes>
+        <munit-tools:then-return>
+          <munit-tools:payload value="#[[]]" mediaType="application/java" encoding="UTF-8"/>
+        </munit-tools:then-return>
+      </munit-tools:mock-when>
+    </munit:behavior>
+    <!-- 
+        Execution Section:
+        - Run the main flow under test.
+    -->
+    <munit:execution>
+      <flow-ref name="get:\tasks\(taskId):to-do-task-management-api-config"/>
+    </munit:execution>
+    <!-- 
+        Validation Section:
+        - Assert the payload contains the "Task not found" message.
+        - Assert the httpStatus variable is set to 404 (as Number).
+        - Verify the db:select connector is called.
+    -->
+    <munit:validation>
+      <munit-tools:assert-equals doc:name="Assert Task Not Found Message" actual="#[payload.message]" expected="Task not found" message="Payload should contain 'Task not found' message"/>
+      <munit-tools:assert-equals doc:name="Assert HTTP Status" actual="#[vars.httpStatus]" expected="#[404]" message="httpStatus variable should be 404"/>
+      <munit-tools:verify-call doc:name="Verify DB Select Called" processor="db:select" times="1"/>
+    </munit:validation>
+  </munit:test>
+</mule>

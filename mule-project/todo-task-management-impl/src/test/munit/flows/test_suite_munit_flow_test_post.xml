@@ -1,0 +1,69 @@
+<?xml version="1.0" ?>
+<mule xmlns:os="http://www.mulesoft.org/schema/mule/os" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:validation="http://www.mulesoft.org/schema/mule/validation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:munit="http://www.mulesoft.org/schema/mule/munit" xmlns:munit-tools="http://www.mulesoft.org/schema/mule/munit-tools" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xsi:schemaLocation="     http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd     http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd     http://www.mulesoft.org/schema/mule/munit http://www.mulesoft.org/schema/mule/munit/current/mule-munit.xsd     http://www.mulesoft.org/schema/mule/munit-tools  http://www.mulesoft.org/schema/mule/munit-tools/current/mule-munit-tools.xsd http://www.mulesoft.org/schema/mule/validation http://www.mulesoft.org/schema/mule/validation/current/mule-validation.xsd http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd">
+  <munit:config name="test_suite_munit_flow_test_post.xml"/>
+  <munit:test name="test_suite_munit_flow_test_post-happyPath" description="Happy path scenario for creating a new task via the POST /tasks endpoint, covering the entire flow including logging, validation, database insert, retrieval of generated ID, and response transformation.">
+    <munit:behavior>
+      <!-- Set initial event with task creation payload -->
+      <munit:set-event doc:name="Set Event with Task Creation Payload">
+        <munit:payload value="#[MunitTools::getResourceAsString('test_suite_munit_flow_test_post/mock_data_scenario_0/create_task_request.json')]" mediaType="application/json" encoding="UTF-8"/>
+      </munit:set-event>
+      <!-- Mock database insert operation -->
+      <munit-tools:mock-when doc:name="Mock Insert Task" processor="db:insert">
+        <munit-tools:with-attributes>
+          <munit-tools:with-attribute whereValue="Insert Task" attributeName="doc:name"/>
+        </munit-tools:with-attributes>
+        <munit-tools:then-return>
+          <munit-tools:payload value="#[{                     &quot;affectedRows&quot;: 1,                     &quot;generatedKeys&quot;: []                 }]" mediaType="application/java"/>
+        </munit-tools:then-return>
+      </munit-tools:mock-when>
+      <!-- Mock database select operation for getting generated ID -->
+      <munit-tools:mock-when doc:name="Mock Get Generated ID" processor="db:select">
+        <munit-tools:with-attributes>
+          <munit-tools:with-attribute whereValue="Get Generated ID" attributeName="doc:name"/>
+        </munit-tools:with-attributes>
+        <munit-tools:then-return>
+          <munit-tools:payload value="#[[{&quot;id&quot;: 12345}]]" mediaType="application/java"/>
+        </munit-tools:then-return>
+      </munit-tools:mock-when>
+    </munit:behavior>
+    <munit:execution>
+      <flow-ref name="post:\tasks:application\json:to-do-task-management-api-config"/>
+    </munit:execution>
+    <munit:validation>
+      <!-- Verify main flow logger -->
+      <munit-tools:verify-call doc:name="Verify Main Flow Logger" processor="logger">
+        <munit-tools:with-attributes>
+          <munit-tools:with-attribute whereValue="post:\tasks:application\json:to-do-task-management-api-config" attributeName="message"/>
+        </munit-tools:with-attributes>
+      </munit-tools:verify-call>
+      <!-- Verify Start Logger in create-task-flow -->
+      <munit-tools:verify-call doc:name="Verify Start Logger" processor="logger">
+        <munit-tools:with-attributes>
+          <munit-tools:with-attribute whereValue="Start - Create Task" attributeName="doc:name"/>
+        </munit-tools:with-attributes>
+      </munit-tools:verify-call>
+      <!-- Verify database insert was called -->
+      <munit-tools:verify-call doc:name="Verify DB Insert Called" processor="db:insert">
+        <munit-tools:with-attributes>
+          <munit-tools:with-attribute whereValue="Insert Task" attributeName="doc:name"/>
+        </munit-tools:with-attributes>
+      </munit-tools:verify-call>
+      <!-- Verify database select was called -->
+      <munit-tools:verify-call doc:name="Verify DB Select Called" processor="db:select">
+        <munit-tools:with-attributes>
+          <munit-tools:with-attribute whereValue="Get Generated ID" attributeName="doc:name"/>
+        </munit-tools:with-attributes>
+      </munit-tools:verify-call>
+      <!-- Verify End Logger in create-task-flow -->
+      <munit-tools:verify-call doc:name="Verify End Logger" processor="logger">
+        <munit-tools:with-attributes>
+          <munit-tools:with-attribute whereValue="End - Create Task" attributeName="doc:name"/>
+        </munit-tools:with-attributes>
+      </munit-tools:verify-call>
+      <!-- Assert final payload structure -->
+      <munit-tools:assert-that doc:name="Assert Response Payload" expression="#[payload]" is="#[MunitTools::notNullValue()]"/>
+      <munit-tools:assert-that doc:name="Assert Task ID" expression="#[payload.id]" is="#[MunitTools::equalTo('12345')]"/>
+      <munit-tools:assert-that doc:name="Assert HTTP Status" expression="#[vars.httpStatus]" is="#[MunitTools::equalTo(201)]"/>
+    </munit:validation>
+  </munit:test>
+</mule>

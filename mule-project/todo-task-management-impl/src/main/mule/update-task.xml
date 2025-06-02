@@ -10,10 +10,11 @@
 
     <sub-flow name="update-task-flow" doc:id="7b69c3b2-eb02-4ae7-8265-320b6462db78">
         <logger level="INFO" doc:name="Start - Update Task" message="Starting update task flow with ID: #[vars.taskId] and payload: #[payload]"/>
+        <set-variable variableName="inputPayload" value="#[payload]" doc:name="inputPayload" doc:id="gbxrcg" />
         
         <!-- Check if task exists -->
         <db:select doc:name="Check Task Exists" config-ref="mysql-db-config">
-            <db:sql><![CDATA[SELECT id FROM tasks WHERE id = :id]]></db:sql>
+            <db:sql><![CDATA[SELECT id, title, description, dueDate, completed FROM tasks WHERE id = :id]]></db:sql>
             <db:input-parameters><![CDATA[#[{
     'id': vars.taskId
 }]]]></db:input-parameters>
@@ -41,15 +42,17 @@ output application/json
                 <ee:transform doc:name="Prepare Task Data">
                     <ee:message />
                     <ee:variables>
-                        <ee:set-variable variableName="taskInput"><![CDATA[%dw 2.0
+                        <ee:set-variable variableName="taskInput">
+                        <![CDATA[%dw 2.0
 output application/java
 ---
 {
-    title: payload.title,
-    description: payload.description default null,
-    dueDate: payload.dueDate default null,
-    completed: payload.completed default false
-}]]></ee:set-variable>
+    title: vars.inputPayload.title,
+    description: vars.inputPayload.description default null,
+    dueDate: vars.inputPayload.dueDate default null,
+    completed: vars.inputPayload.completed default false
+}]]>
+                    </ee:set-variable>
                     </ee:variables>
                 </ee:transform>
                 

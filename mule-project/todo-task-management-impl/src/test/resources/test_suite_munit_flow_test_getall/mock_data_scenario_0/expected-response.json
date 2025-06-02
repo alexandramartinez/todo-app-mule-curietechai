@@ -1,0 +1,16 @@
+[
+  {
+    "id": "101",
+    "title": "Submit project report",
+    "description": "Finalize and submit the quarterly project report to management.",
+    "dueDate": "2024-07-15",
+    "completed": false
+  },
+  {
+    "id": "102",
+    "title": "Team meeting",
+    "description": "Weekly sync-up meeting with the development team.",
+    "dueDate": "2024-07-10",
+    "completed": true
+  }
+]

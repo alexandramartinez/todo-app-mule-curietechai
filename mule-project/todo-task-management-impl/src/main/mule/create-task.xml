@@ -41,7 +41,7 @@ VALUES (:title, :description, :dueDate, :completed)]]></db:sql>
         
         <!-- Get the generated ID -->
         <db:select doc:name="Get Generated ID" config-ref="mysql-db-config">
-            <db:sql><![CDATA[SELECT LAST_INSERT_ID() as id]]></db:sql>
+            <db:sql><![CDATA[SELECT id from tasks ORDER BY id DESC LIMIT 1]]></db:sql>
         </db:select>
         
         <!-- Transform to API response format -->

@@ -1,0 +1,9 @@
+[
+  {
+    "id": 101,
+    "title": "Submit project report",
+    "description": "Complete and submit the final project report to the supervisor.",
+    "dueDate": "2024-07-15",
+    "completed": false
+  }
+]

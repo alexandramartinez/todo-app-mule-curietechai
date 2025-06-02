@@ -1,3 +1,27 @@
+# Video
+
+TBD
+
+# Message history
+
+## 1. Alex
+
+Use Parameterized Queries
+
+Why:
+
+Directly injecting values into SQL is error-prone and can lead to SQL injection vulnerabilities. The DB connector expects parameters to be bound using the :paramName syntax.
+
+How to fix:
+
+Build both the SQL and the parameters map together in DataWeave.
+Pass the parameters map to <db:input-parameters> in the DB connector.
+
+## 2. Curie
+
+_Returns code changes_
+
+```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <mule xmlns="http://www.mulesoft.org/schema/mule/core"
       xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
@@ -10,6 +34,9 @@
 
     <sub-flow name="get-all-tasks-flow" doc:id="6fdbaf16-63a8-4a6f-838f-802efd09e317">
         <logger level="INFO" doc:name="Start - Get All Tasks" message="Starting get all tasks flow with query params: #[attributes.queryParams]"/>
+        
+        
+        
         <!-- Execute query with parameterized where clause -->
         <ee:transform doc:name="Prepare Query Parameters">
             <ee:message />
@@ -73,3 +100,4 @@ payload map {
     </sub-flow>
     
 </mule>
+```

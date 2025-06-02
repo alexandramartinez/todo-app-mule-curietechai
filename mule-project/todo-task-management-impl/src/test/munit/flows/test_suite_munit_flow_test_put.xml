@@ -1,0 +1,141 @@
+<?xml version="1.0" ?>
+<mule xmlns:os="http://www.mulesoft.org/schema/mule/os" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:validation="http://www.mulesoft.org/schema/mule/validation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:munit="http://www.mulesoft.org/schema/mule/munit" xmlns:munit-tools="http://www.mulesoft.org/schema/mule/munit-tools" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xsi:schemaLocation="     http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd     http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd     http://www.mulesoft.org/schema/mule/munit http://www.mulesoft.org/schema/mule/munit/current/mule-munit.xsd     http://www.mulesoft.org/schema/mule/munit-tools  http://www.mulesoft.org/schema/mule/munit-tools/current/mule-munit-tools.xsd http://www.mulesoft.org/schema/mule/validation http://www.mulesoft.org/schema/mule/validation/current/mule-validation.xsd http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd">
+  <munit:config name="test_suite_munit_flow_test_put.xml"/>
+  <munit:test name="test_suite_munit_flow_test_put-happyPath" description="Successfully update an existing task (happy path) via the PUT /tasks/{taskId} API, covering the case when the task exists in the database.">
+    <!-- Set up initial test data and mocks -->
+    <munit:behavior>
+      <!-- Set initial event with payload and uriParams -->
+      <munit:set-event>
+        <munit:payload value="#[MunitTools::getResourceAsString('test_suite_munit_flow_test_put/mock_data_scenario_0/update_task_request.json')]" mediaType="application/json" encoding="UTF-8"/>
+        <munit:attributes value="#[{                 uriParams: {                     'taskId': '101'                 }             }]"/>
+      </munit:set-event>
+      <!-- Mock first database select (Check Task Exists) -->
+      <munit-tools:mock-when processor="db:select">
+        <munit-tools:with-attributes>
+          <munit-tools:with-attribute attributeName="doc:name" whereValue="Check Task Exists"/>
+        </munit-tools:with-attributes>
+        <munit-tools:then-return>
+          <munit-tools:payload value="#[MunitTools::getResourceAsString('test_suite_munit_flow_test_put/mock_data_scenario_0/check_task_exists_response.json')]" mediaType="application/json" encoding="UTF-8"/>
+        </munit-tools:then-return>
+      </munit-tools:mock-when>
+      <!-- Mock database update -->
+      <munit-tools:mock-when processor="db:update">
+        <munit-tools:with-attributes>
+          <munit-tools:with-attribute attributeName="doc:name" whereValue="Update Task"/>
+        </munit-tools:with-attributes>
+        <munit-tools:then-return>
+          <munit-tools:payload value="#[{                     &quot;updatedRows&quot;: 1                 }]" mediaType="application/json"/>
+        </munit-tools:then-return>
+      </munit-tools:mock-when>
+      <!-- Mock second database select (Get Updated Task) -->
+      <munit-tools:mock-when processor="db:select">
+        <munit-tools:with-attributes>
+          <munit-tools:with-attribute attributeName="doc:name" whereValue="Get Updated Task"/>
+        </munit-tools:with-attributes>
+        <munit-tools:then-return>
+          <munit-tools:payload value="#[MunitTools::getResourceAsString('test_suite_munit_flow_test_put/mock_data_scenario_0/get_updated_task_response.json')]" mediaType="application/json" encoding="UTF-8"/>
+        </munit-tools:then-return>
+      </munit-tools:mock-when>
+    </munit:behavior>
+    <!-- Execute the flow -->
+    <munit:execution>
+      <flow-ref name="put:\tasks\(taskId):application\json:to-do-task-management-api-config"/>
+    </munit:execution>
+    <!-- Validate the response -->
+    <munit:validation>
+      <!-- Verify database operations were called -->
+      <munit-tools:verify-call processor="db:select" times="1">
+        <munit-tools:with-attributes>
+          <munit-tools:with-attribute attributeName="doc:name" whereValue="Check Task Exists"/>
+        </munit-tools:with-attributes>
+      </munit-tools:verify-call>
+      <munit-tools:verify-call processor="db:update" times="1">
+        <munit-tools:with-attributes>
+          <munit-tools:with-attribute attributeName="doc:name" whereValue="Update Task"/>
+        </munit-tools:with-attributes>
+      </munit-tools:verify-call>
+      <munit-tools:verify-call processor="db:select" times="1">
+        <munit-tools:with-attributes>
+          <munit-tools:with-attribute attributeName="doc:name" whereValue="Get Updated Task"/>
+        </munit-tools:with-attributes>
+      </munit-tools:verify-call>
+      <!-- Verify logger calls -->
+      <munit-tools:verify-call processor="logger" times="1">
+        <munit-tools:with-attributes>
+          <munit-tools:with-attribute attributeName="doc:name" whereValue="Start - Update Task"/>
+        </munit-tools:with-attributes>
+      </munit-tools:verify-call>
+      <munit-tools:verify-call processor="logger" times="1">
+        <munit-tools:with-attributes>
+          <munit-tools:with-attribute attributeName="doc:name" whereValue="End - Update Task"/>
+        </munit-tools:with-attributes>
+      </munit-tools:verify-call>
+      <!-- Assert the response payload matches expected structure -->
+      <munit-tools:assert-that expression="#[payload.id]" is="#[MunitTools::notNullValue()]"/>
+      <munit-tools:assert-that expression="#[payload.title]" is="#[MunitTools::equalTo('Submit project report')]"/>
+      <munit-tools:assert-that expression="#[payload.description]" is="#[MunitTools::equalTo('Complete and submit the quarterly project report to management.')]"/>
+      <munit-tools:assert-that expression="#[payload.dueDate]" is="#[MunitTools::equalTo('2024-07-15')]"/>
+      <munit-tools:assert-that expression="#[payload.completed]" is="#[MunitTools::equalTo(true)]"/>
+    </munit:validation>
+  </munit:test>
+  <munit:test name="test_suite_munit_flow_test_put-taskNotFound" description="Attempt to update a task that does not exist (task not found scenario), ensuring the 404 path is covered.">
+    <munit:behavior>
+      <!-- Mock the database select operation to return an empty result, simulating that the task does not exist -->
+      <munit-tools:mock-when processor="db:select">
+        <munit-tools:with-attributes>
+          <munit-tools:with-attribute whereValue="Check Task Exists" attributeName="doc:name"/>
+        </munit-tools:with-attributes>
+        <munit-tools:then-return>
+          <munit-tools:payload value="#[MunitTools::getResourceAsString('test_suite_munit_flow_test_put/mock_data_scenario_1/empty_task_result.json')]" mediaType="application/json" encoding="UTF-8"/>
+        </munit-tools:then-return>
+      </munit-tools:mock-when>
+      <!-- Set event to provide a valid payload and uriParams with a taskId for the HTTP listener -->
+      <munit:set-event doc:name="Set Event with taskId">
+        <munit:payload value="#[MunitTools::getResourceAsString('test_suite_munit_flow_test_put/mock_data_scenario_1/update_task_request.json')]" mediaType="application/json" encoding="UTF-8"/>
+        <munit:attributes value="#[{                 'uriParams': {                     'taskId': '12345'                 }             }]" mediaType="application/java"/>
+      </munit:set-event>
+    </munit:behavior>
+    <munit:execution>
+      <!-- Run the target flow -->
+      <flow-ref name="put:\tasks\(taskId):application\json:to-do-task-management-api-config"/>
+    </munit:execution>
+    <munit:validation>
+      <!-- Assert that the response payload contains the "Task not found" message -->
+      <munit-tools:assert-that doc:name="Assert Task Not Found Message" expression="#[payload.message]" is="#[MunitTools::equalTo('Task not found')]"/>
+      <!-- Assert that the response variable httpStatus is set to 404 -->
+      <munit-tools:assert-that doc:name="Assert HTTP Status 404" expression="#[vars.httpStatus]" is="#[MunitTools::equalTo(404)]"/>
+      <!-- Verify that the logger components are called -->
+      <munit-tools:verify-call processor="logger" doc:name="Verify Main Flow Logger" times="1">
+        <munit-tools:with-attributes>
+          <munit-tools:with-attribute whereValue="put:\tasks\(taskId):application\json:to-do-task-management-api-config" attributeName="message"/>
+        </munit-tools:with-attributes>
+      </munit-tools:verify-call>
+      <munit-tools:verify-call processor="logger" doc:name="Verify Start Logger" times="1">
+        <munit-tools:with-attributes>
+          <munit-tools:with-attribute whereValue="Start - Update Task" attributeName="doc:name"/>
+        </munit-tools:with-attributes>
+      </munit-tools:verify-call>
+      <munit-tools:verify-call processor="logger" doc:name="Verify Task Not Found Logger" times="1">
+        <munit-tools:with-attributes>
+          <munit-tools:with-attribute whereValue="Task Not Found" attributeName="doc:name"/>
+        </munit-tools:with-attributes>
+      </munit-tools:verify-call>
+      <!-- Verify that only the first database select connector is called -->
+      <munit-tools:verify-call processor="db:select" doc:name="Verify DB Select Called" times="1">
+        <munit-tools:with-attributes>
+          <munit-tools:with-attribute whereValue="Check Task Exists" attributeName="doc:name"/>
+        </munit-tools:with-attributes>
+      </munit-tools:verify-call>
+      <munit-tools:verify-call processor="db:update" doc:name="Verify DB Update Not Called" times="0">
+        <munit-tools:with-attributes>
+          <munit-tools:with-attribute whereValue="Update Task" attributeName="doc:name"/>
+        </munit-tools:with-attributes>
+      </munit-tools:verify-call>
+      <munit-tools:verify-call processor="db:select" doc:name="Verify Get Updated Task Not Called" times="0">
+        <munit-tools:with-attributes>
+          <munit-tools:with-attribute whereValue="Get Updated Task" attributeName="doc:name"/>
+        </munit-tools:with-attributes>
+      </munit-tools:verify-call>
+    </munit:validation>
+  </munit:test>
+</mule>

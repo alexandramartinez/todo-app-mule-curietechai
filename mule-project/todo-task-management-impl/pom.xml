@@ -10,6 +10,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <mule.maven.plugin.version>4.3.0</mule.maven.plugin.version>
+        <munit.version>3.4.0</munit.version>
     </properties>
     <build>
         <plugins>
@@ -23,6 +24,49 @@
                 <artifactId>mule-maven-plugin</artifactId>
                 <version>${mule.maven.plugin.version}</version>
                 <extensions>true</extensions>
+                <configuration>
+                    <sharedLibraries>
+                        <sharedLibrary>
+                            <groupId>mysql</groupId>
+                            <artifactId>mysql-connector-java</artifactId>
+                        </sharedLibrary>
+                    </sharedLibraries>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>com.mulesoft.munit.tools</groupId>
+                <artifactId>munit-maven-plugin</artifactId>
+                <version>${munit.version}</version>
+                <executions>
+                    <execution>
+                        <id>test</id>
+                        <phase>test</phase>
+                        <goals>
+                            <goal>test</goal>
+                            <goal>coverage-report</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <coverage>
+                        <formats>
+                            <format>html</format>
+                            <format>console</format>
+                            <format>json</format>
+                            <format>sonar</format>
+                        </formats>
+                        <runCoverage>true</runCoverage>
+                        <requiredApplicationCoverage>70</requiredApplicationCoverage>
+                        <requiredResourceCoverage>70</requiredResourceCoverage>
+                        <requiredFlowCoverage>70</requiredFlowCoverage>
+                        <failBuild>false</failBuild>
+                        <ignoreFlows/>
+                        <ignoreFiles>
+                            <ignoreFile>global.xml</ignoreFile>
+                        </ignoreFiles>
+                    </coverage>
+                    <runtimeProduct>MULE_EE</runtimeProduct>
+                </configuration>
             </plugin>
         </plugins>
     </build>
@@ -53,6 +97,11 @@
     </pluginRepositories>
     <dependencies>
         <dependency>
+            <groupId>mysql</groupId>
+            <artifactId>mysql-connector-java</artifactId>
+            <version>8.0.29</version>
+        </dependency>
+        <dependency>
             <groupId>c567f842-dda9-4c9d-880b-3e1481ab3b34</groupId>
             <artifactId>to-do-task-management-api</artifactId>
             <version>1.0.0</version>
@@ -76,6 +125,26 @@
             <artifactId>mule-db-connector</artifactId>
             <version>1.14.16</version>
             <classifier>mule-plugin</classifier>
+        </dependency>
+        <dependency>
+            <groupId>com.mulesoft.munit</groupId>
+            <artifactId>munit-tools</artifactId>
+            <version>${munit.version}</version>
+            <classifier>mule-plugin</classifier>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.mulesoft.munit</groupId>
+            <artifactId>munit-runner</artifactId>
+            <version>${munit.version}</version>
+            <classifier>mule-plugin</classifier>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.mule.weave</groupId>
+            <artifactId>assertions</artifactId>
+            <version>1.2.1</version>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 </project>
